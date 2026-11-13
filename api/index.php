@@ -146,7 +146,11 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
                 }
             }
             if ($idx !== null) {
-                echo implode("\n", array_slice($all, $idx, 8)), "\n";
+                foreach (array_slice($all, $idx, 30) as $line) {
+                    if (str_contains($line, '/var/task/user/app/') || str_contains($line, '/var/task/user/bootstrap/') || str_contains($line, '.ERROR')) {
+                        echo $line, "\n";
+                    }
+                }
             }
         }
     } catch (Throwable $e) {
