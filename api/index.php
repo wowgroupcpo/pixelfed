@@ -35,7 +35,9 @@ foreach ([
 // (cities.json, default avatars/headers, bouncer rules, ...). Each file is
 // checked on its own so a partial copy is completed on the next request.
 $seedFrom = __DIR__.'/../storage/app';
-$seedTo = $serverlessStorage.'/app';
+// getSubPathname() has no leading separator, so this MUST end with one --
+// without it every file landed in storage/apppublic/ and /storage/* 404'd.
+$seedTo = rtrim($serverlessStorage, '/').'/app/';
 if (is_dir($seedFrom)) {
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($seedFrom, FilesystemIterator::SKIP_DOTS),
@@ -70,6 +72,7 @@ if (($_GET['k'] ?? '') === 'pfdiag-media') {
     echo "srcAvatars=", var_export(@scandir(__DIR__.'/../storage/app/public/avatars') ?: [], true), "\n";
     $m = $serverlessStorage.'/app/public/avatars/default.png';
     echo "mediaFile exists=", var_export(is_file($m), true), "\n";
+    echo "apppublic stray dir=", var_export(is_dir($serverlessStorage.'/apppublic'), true), " entries=", implode(',', array_slice(@scandir($serverlessStorage.'/apppublic/public/avatars') ?: [], 2)), "\n";
     echo "redisFallback env=", var_export(getenv('REDIS_UNAVAILABLE_FALLBACK'), true), "\n";
     exit;
 }
