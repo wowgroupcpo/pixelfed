@@ -181,6 +181,16 @@ function patchBuilderIndex(file) {
         'handler config',
         file,
     );
+    // Build-log marker: proves at build time whether this patched copy of
+    // the builder is the one that actually executed (vs. an in-memory or
+    // read-only copy loaded by the CLI before buildCommand ran).
+    content = replaceOnce(
+        content,
+        '    return { output: lambda };',
+        "    console.log('[patch-vercel-php] EMITTED file=' + __filename + ' handler=' + lambda.handler + ' launcherType=' + lambda.launcherType + ' awsLambdaHandler=' + lambda.awsLambdaHandler);\n    return { output: lambda };",
+        'emitted-config marker',
+        file,
+    );
     writePatched(file, content);
 }
 
