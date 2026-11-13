@@ -55,6 +55,25 @@ if (is_dir($seedFrom)) {
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
 
+// TEMP DIAG
+if (($_GET['k'] ?? '') === 'pfdiag-media') {
+    header('Content-Type: text/plain');
+    echo "uri=$uri\n";
+    echo "seedFrom=", __DIR__.'/../storage/app', " is_dir=", var_export(is_dir(__DIR__.'/../storage/app'), true), "\n";
+    echo "seedTo=", $serverlessStorage."/app", " is_dir=", var_export(is_dir($serverlessStorage."/app"), true), "\n";
+    foreach (['', '/public', '/public/avatars'] as $sub) {
+        $d = $serverlessStorage.'/app'.$sub;
+        echo "dir[$sub] exists=", var_export(is_dir($d), true);
+        if (is_dir($d)) { echo ' entries=', implode(',', array_slice(@scandir($d) ?: [], 2, 8)); }
+        echo "\n";
+    }
+    echo "srcAvatars=", var_export(@scandir(__DIR__.'/../storage/app/public/avatars') ?: [], true), "\n";
+    $m = $serverlessStorage.'/app/public/avatars/default.png';
+    echo "mediaFile exists=", var_export(is_file($m), true), "\n";
+    echo "redisFallback env=", var_export(getenv('REDIS_UNAVAILABLE_FALLBACK'), true), "\n";
+    exit;
+}
+
 // Laravel serves uploaded media from public/storage, which `artisan
 // storage:link` makes a symlink to storage/app/public. A symlink cannot be
 // committed (and public/storage is gitignored), so on Vercel every
