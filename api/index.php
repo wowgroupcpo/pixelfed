@@ -14,6 +14,22 @@
  * (see VERCEL_PHP_DOCROOT in vercel.json).
  */
 
+// TEMP DIAGNOSTICS — dump what the launcher forwarded; remove after debugging.
+if (($_GET['k'] ?? '') === 'pfdiag-req') {
+    header('Content-Type: text/plain');
+    echo "REQUEST_URI=", $_SERVER['REQUEST_URI'] ?? '', "\n";
+    echo "SCRIPT_NAME=", $_SERVER['SCRIPT_NAME'] ?? '', "\n";
+    echo "HTTP_HOST=", $_SERVER['HTTP_HOST'] ?? '', "\n";
+    echo "X_FORWARDED_HOST=", $_SERVER['HTTP_X_FORWARDED_HOST'] ?? '', "\n";
+    echo "X_FORWARDED_PROTO=", $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '', "\n";
+    foreach ($_SERVER as $k => $v) {
+        if (str_starts_with($k, 'HTTP_X_') && is_string($v)) {
+            echo $k, '=', substr($v, 0, 200), "\n";
+        }
+    }
+    exit;
+}
+
 $serverlessStorage = '/tmp/pixelfed/storage';
 
 if (! is_dir($serverlessStorage.'/framework/views')) {
