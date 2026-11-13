@@ -118,7 +118,6 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         } catch (Throwable $e) {
             echo "stats FAIL ", $e::class, ': ', $e->getMessage(), "\n", $e->getFile(), ':', $e->getLine(), "\n";
         }
-        foreach (\Illuminate\Support\Facades\DB::select('select name, enabled from pulse_entries limit 1') as $row) { echo 'pulse row: ', json_encode($row), "\n"; break; }
         echo "CACHE_STORE env=", getenv('CACHE_STORE') ?: '(unset)', "\n";
         echo "PULSE_ENABLED env=", getenv('PULSE_ENABLED') ?: '(unset)', "\n";
         echo "HORIZON redis conn: ", json_encode(config('database.redis.default')), "\n";
