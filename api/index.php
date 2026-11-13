@@ -89,6 +89,7 @@ if (str_starts_with($uri, '/storage/')) {
         header('Content-Type: text/plain');
         @set_time_limit(50);
         try {
+            require __DIR__.'/../vendor/autoload.php';
             $app = require __DIR__.'/../bootstrap/app.php';
             $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
             $req = Illuminate\Http\Request::create('/i/web', 'GET');
