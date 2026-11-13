@@ -57,123 +57,8 @@ if (is_dir($seedFrom)) {
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
 
-// TEMP DIAG
-if (($_GET['k'] ?? '') === 'pfdiag-media') {
-    header('Content-Type: text/plain');
-    echo "uri=$uri\n";
-    echo "seedFrom=", __DIR__.'/../storage/app', " is_dir=", var_export(is_dir(__DIR__.'/../storage/app'), true), "\n";
-    echo "seedTo=", $serverlessStorage."/app", " is_dir=", var_export(is_dir($serverlessStorage."/app"), true), "\n";
-    foreach (['', '/public', '/public/avatars'] as $sub) {
-        $d = $serverlessStorage.'/app'.$sub;
-        echo "dir[$sub] exists=", var_export(is_dir($d), true);
-        if (is_dir($d)) { echo ' entries=', implode(',', array_slice(@scandir($d) ?: [], 2, 8)); }
-        echo "\n";
-    }
-    echo "srcAvatars=", var_export(@scandir(__DIR__.'/../storage/app/public/avatars') ?: [], true), "\n";
-    $m = $serverlessStorage.'/app/public/avatars/default.png';
-    echo "mediaFile exists=", var_export(is_file($m), true), "\n";
-    echo "apppublic stray dir=", var_export(is_dir($serverlessStorage.'/apppublic'), true), " entries=", implode(',', array_slice(@scandir($serverlessStorage.'/apppublic/public/avatars') ?: [], 2)), "\n";
-    echo "redisFallback env=", var_export(getenv('REDIS_UNAVAILABLE_FALLBACK'), true), "\n";
-    exit;
-}
-
-// Laravel serves uploaded media from public/storage, which `artisan
-// storage:link` makes a symlink to storage/app/public. A symlink cannot be
-// committed (and public/storage is gitignored), so on Vercel every
-// /storage/... URL falls through to Laravel and 404s -- including the default
-// avatar and header every profile points at. Map the URL onto the seeded
-// storage directory instead, which has the same layout beneath it.
 if (str_starts_with($uri, '/storage/')) {
     $mediaFile = $serverlessStorage.'/app/public/'.substr($uri, strlen('/storage/'));
-    if (($_GET['k'] ?? '') === 'pfdiag-spa') {
-        header('Content-Type: text/plain');
-        @set_time_limit(50);
-        try {
-            require __DIR__.'/../vendor/autoload.php';
-            $app = require __DIR__.'/../bootstrap/app.php';
-            $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-            $req = Illuminate\Http\Request::create('/i/web', 'GET');
-            $app->instance('request', $req);
-            $kernel->bootstrap();
-
-            echo "redis binding=", get_class($app->make('redis')), "\n";
-            echo "storyIndex ok=";
-            try { var_export(app(App\Services\StoryIndexService::class)->hasActiveStory(1)); } catch (Throwable $e) { echo 'FAIL '.$e->getMessage(); }
-            echo "\n";
-
-            $user = App\Models\User::first();
-            if (! $user) { echo "no users yet\n"; exit; }
-            echo "user={$user->username} pid={$user->profile_id}\n";
-
-            $req->setUserResolver(fn () => $user);
-            $app['auth']->setUser($user);
-
-            try {
-                $html = view('layouts.spa')->render();
-                echo "spa render OK bytes=", strlen($html), "\n";
-            } catch (Throwable $e) {
-                echo "spa render FAIL ", $e::class, ': ', $e->getMessage(), "\n";
-                echo "at ", $e->getFile(), ':', $e->getLine(), "\n";
-            }
-        } catch (Throwable $e) {
-            echo "boot FAIL ", $e::class, ': ', $e->getMessage(), "\n";
-        }
-        exit;
-    }
-    if (($_GET['k'] ?? '') === 'pfdiag-remote') {
-        header('Content-Type: text/plain');
-        $target = 'https://'.($_SERVER['HTTP_HOST'] ?? 'pixelfed-liard.vercel.app').'/storage/avatars/default.png?u=r'.mt_rand();
-        $ctx = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 20], 'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
-        $body = @file_get_contents($target, false, $ctx);
-        echo "target=$target\n";
-        echo "status=", ($http_response_header[0] ?? '(none)'), "\n";
-        echo "bytes=", strlen((string) $body), "\n";
-        echo "md5=", md5((string) $body), "\n";
-        foreach ($http_response_header ?? [] as $h) {
-            if (preg_match('/^(content-type|content-length|x-vercel|server):/i', $h)) { echo "hdr: $h\n"; }
-        }
-        exit;
-    }
-    if (($_GET['k'] ?? '') === 'pfdiag-b64') {
-        header('Content-Type: text/plain');
-        $b = @file_get_contents($mediaFile);
-        echo "bytes=", strlen((string) $b), "\n";
-        echo "md5=", md5((string) $b), "\n";
-        echo "b64=", base64_encode((string) $b), "\n";
-        exit;
-    }
-    if (($_GET['k'] ?? '') === 'pfdiag-loop') {
-        header('Content-Type: text/plain');
-        // Ask the PHP built-in server for the binary asset over real HTTP --
-        // the exact path the launcher proxies -- and report what came back.
-        $port = $_SERVER['SERVER_PORT'] ?? '3000';
-        $url = 'http://127.0.0.1:'.$port.'/storage/avatars/default.png';
-        $body = @file_get_contents($url);
-        echo "url=$url\n";
-        echo "status_line=", ($http_response_header[0] ?? '(none)'), "\n";
-        echo "bytes=", strlen((string) $body), "\n";
-        echo "md5=", md5((string) $body), "\n";
-        echo "expected=", md5_file(__DIR__.'/../storage/app/public/avatars/default.png'), "\n";
-        $ct = '';
-        foreach ($http_response_header ?? [] as $h) {
-            if (stripos($h, 'content-type:') === 0) { $ct = $h; }
-        }
-        echo "ctype=$ct\n";
-        exit;
-    }
-    if (($_GET['k'] ?? '') === 'pfdiag-bin') {
-        header('Content-Type: text/plain');
-        $raw = is_file($mediaFile) ? @file_get_contents($mediaFile) : '';
-        echo "exists=", var_export(is_file($mediaFile), true), "\n";
-        echo "bytes=", strlen($raw), "\n";
-        echo "first8=", bin2hex(substr($raw, 0, 8)), "\n";
-        echo "md5=", md5($raw), "\n";
-        echo "expected_md5=", md5_file('/home/user/pixelfed/storage/app/public/avatars/default.png'), "\n";
-        echo "ob_level=", ob_get_level(), " zlib=", var_export(ini_get('zlib.output_compression'), true), "\n";
-        echo "sendfile=", var_export(ini_get('output_handler'), true), "\n";
-        echo "headers=", json_encode(headers_list()), "\n";
-        exit;
-    }
     if (is_file($mediaFile)) {
         // No getimagesize/mime_content_type here: those need extensions this
         // demo does not always load, and the media set is small and known.
@@ -188,9 +73,6 @@ if (str_starts_with($uri, '/storage/')) {
             'mp4' => 'video/mp4',
             'json' => 'application/json',
         ][$ext] ?? 'application/octet-stream';
-        // echo rather than readfile(): the built-in server hands its output
-        // straight to the launcher, and readfile() writes through a different
-        // buffer path that returned a 500 for binary bodies here.
         header('Content-Type: '.$mime);
         header('Content-Length: '.filesize($mediaFile));
         header('Cache-Control: public, max-age=31536000');
