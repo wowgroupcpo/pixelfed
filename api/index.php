@@ -16,42 +16,76 @@
 
 $serverlessStorage = '/tmp/pixelfed/storage';
 
-if (! is_dir($serverlessStorage.'/framework/views')) {
-    foreach ([
-        '/app/public',
-        '/framework/cache/data',
-        '/framework/sessions',
-        '/framework/views',
-        '/logs',
-    ] as $dir) {
-        if (! is_dir($serverlessStorage.$dir)) {
-            @mkdir($serverlessStorage.$dir, 0775, true);
-        }
+// Every directory is created independently: gating the whole block on one of
+// them meant a warm /tmp that happened to be missing app/public was never
+// repaired, and every /storage/ URL 404'd for the life of the instance.
+foreach ([
+    '/app/public',
+    '/framework/cache/data',
+    '/framework/sessions',
+    '/framework/views',
+    '/logs',
+] as $dir) {
+    if (! is_dir($serverlessStorage.$dir)) {
+        @mkdir($serverlessStorage.$dir, 0775, true);
     }
+}
 
-    // Seed /tmp storage with the app data that ships in git
-    // (cities.json, default avatars/headers, bouncer rules, ...).
-    $seedFrom = __DIR__.'/../storage/app';
-    $seedTo = $serverlessStorage.'/app';
-    if (is_dir($seedFrom) && ! file_exists($seedTo.'/cities.json')) {
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($seedFrom, FilesystemIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-        foreach ($iterator as $item) {
-            $target = $seedTo.$iterator->getSubPathname();
-            if ($item->isDir()) {
-                if (! is_dir($target)) {
-                    @mkdir($target, 0775, true);
-                }
-            } elseif (! file_exists($target)) {
-                @copy($item->getPathname(), $target);
+// Seed /tmp storage with the app data that ships in git
+// (cities.json, default avatars/headers, bouncer rules, ...). Each file is
+// checked on its own so a partial copy is completed on the next request.
+$seedFrom = __DIR__.'/../storage/app';
+$seedTo = $serverlessStorage.'/app';
+if (is_dir($seedFrom)) {
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($seedFrom, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+    foreach ($iterator as $item) {
+        $target = $seedTo.$iterator->getSubPathname();
+        if ($item->isDir()) {
+            if (! is_dir($target)) {
+                @mkdir($target, 0775, true);
             }
+        } elseif (! file_exists($target)) {
+            @copy($item->getPathname(), $target);
         }
     }
 }
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+
+// Laravel serves uploaded media from public/storage, which `artisan
+// storage:link` makes a symlink to storage/app/public. A symlink cannot be
+// committed (and public/storage is gitignored), so on Vercel every
+// /storage/... URL falls through to Laravel and 404s -- including the default
+// avatar and header every profile points at. Map the URL onto the seeded
+// storage directory instead, which has the same layout beneath it.
+if (str_starts_with($uri, '/storage/')) {
+    $mediaFile = $serverlessStorage.'/app/public/'.substr($uri, strlen('/storage/'));
+    if (is_file($mediaFile)) {
+        // No getimagesize/mime_content_type here: those need extensions this
+        // demo does not always load, and the media set is small and known.
+        $ext = strtolower(pathinfo($mediaFile, PATHINFO_EXTENSION));
+        $mime = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'mp4' => 'video/mp4',
+            'json' => 'application/json',
+        ][$ext] ?? 'application/octet-stream';
+        header('Content-Type: '.$mime);
+        header('Content-Length: '.(string) filesize($mediaFile));
+        header('Cache-Control: public, max-age=31536000');
+        readfile($mediaFile);
+
+        return;
+    }
+}
+
 $staticFile = __DIR__.'/../public'.$uri;
 
 // Never let PHP's built-in server (or Vercel's filesystem layer) serve a
