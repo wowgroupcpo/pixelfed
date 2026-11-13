@@ -14,18 +14,41 @@
  * (see VERCEL_PHP_DOCROOT in vercel.json).
  */
 
-// TEMP DIAGNOSTICS — dump what the launcher forwarded; remove after debugging.
-if (($_GET['k'] ?? '') === 'pfdiag-req') {
+// TEMP DIAGNOSTICS — DB reachability + Laravel boot; remove after debugging.
+if (($_GET['k'] ?? '') === 'pfdiag-db') {
     header('Content-Type: text/plain');
-    echo "REQUEST_URI=", $_SERVER['REQUEST_URI'] ?? '', "\n";
-    echo "SCRIPT_NAME=", $_SERVER['SCRIPT_NAME'] ?? '', "\n";
-    echo "HTTP_HOST=", $_SERVER['HTTP_HOST'] ?? '', "\n";
-    echo "X_FORWARDED_HOST=", $_SERVER['HTTP_X_FORWARDED_HOST'] ?? '', "\n";
-    echo "X_FORWARDED_PROTO=", $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '', "\n";
-    foreach ($_SERVER as $k => $v) {
-        if (str_starts_with($k, 'HTTP_X_') && is_string($v)) {
-            echo $k, '=', substr($v, 0, 200), "\n";
+    @set_time_limit(25);
+    echo "DB_HOST=", getenv('DB_HOST'), " DB_PORT=", getenv('DB_PORT'), " DB=", getenv('DB_DATABASE'), "\n";
+    echo "cache=", getenv('CACHE_STORE'), " session=", getenv('SESSION_DRIVER'), "\n";
+    $t = microtime(true);
+    try {
+        $pdo = new PDO(
+            'pgsql:host='.getenv('DB_HOST').';port='.getenv('DB_PORT').';dbname='.getenv('DB_DATABASE').';sslmode=require;connect_timeout=8',
+            getenv('DB_USERNAME'),
+            getenv('DB_PASSWORD'),
+            [PDO::ATTR_TIMEOUT => 8, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        printf("pdo ok in %.2fs, tables=%s\n", microtime(true) - $t, $pdo->query('select count(*) from information_schema.tables')->fetchColumn());
+        $pdo = null;
+    } catch (Throwable $e) {
+        printf("pdo FAIL in %.2fs: %s\n", microtime(true) - $t, $e->getMessage());
+    }
+    try {
+        require __DIR__.'/../vendor/autoload.php';
+        $app = require __DIR__.'/../bootstrap/app.php';
+        $k = $app->make(Illuminate\Contracts\Http\Kernel::class);
+        $k->bootstrap();
+        echo "laravel booted\n";
+        try {
+            $req = Illuminate\Http\Request::create('/api/v1/instance', 'GET');
+            $res = $k->handle($req);
+            echo "instance status=", $res->getStatusCode(), "\n";
+            echo substr((string) $res->getContent(), 0, 300), "\n";
+        } catch (Throwable $e) {
+            echo "handle FAIL ", $e::class, ': ', $e->getMessage(), "\n";
         }
+    } catch (Throwable $e) {
+        echo "boot FAIL ", $e::class, ': ', $e->getMessage(), "\n";
     }
     exit;
 }
