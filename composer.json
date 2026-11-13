@@ -118,6 +118,9 @@
         "build": [
             "npm ci",
             "npm run production"
+        ],
+        "vercel": [
+            "@php scripts/vercel-build.php"
         ]
 
     },

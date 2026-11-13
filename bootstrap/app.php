@@ -50,7 +50,7 @@ use League\OAuth2\Server\Exception\OAuthServerException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         using: function () {
             Route::middleware('web')
@@ -225,3 +225,13 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->create();
+
+// Serverless (Vercel): the deployment filesystem is read-only except /tmp,
+// so Laravel's storage (compiled views, logs, sessions, app data) must live
+// there. api/index.php seeds this directory before Laravel boots.
+// This branch is inert everywhere else (Docker/VPS do not set VERCEL).
+if (getenv('VERCEL')) {
+    $app->useStoragePath('/tmp/pixelfed/storage');
+}
+
+return $app;
