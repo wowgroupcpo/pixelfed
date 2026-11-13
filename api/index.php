@@ -99,10 +99,21 @@ if (str_starts_with($uri, '/storage/')) {
             'mp4' => 'video/mp4',
             'json' => 'application/json',
         ][$ext] ?? 'application/octet-stream';
-        header('Content-Type: '.$mime);
+        if (($_GET['k'] ?? '') === 'pfdiag-serve') {
+            header('Content-Type: text/plain');
+            echo "file=$mediaFile\n";
+            echo "size=", var_export(@filesize($mediaFile), true), "\n";
+            echo "is_readable=", var_export(is_readable($mediaFile), true), "\n";
+            echo "open_basedir=", var_export(ini_get('open_basedir'), true), "\n";
+            echo "headers_list_before=", json_encode(headers_list()), "\n";
+        } else {
+            header('Content-Type: '.$mime);
+        }
         header('Content-Length: '.(string) filesize($mediaFile));
         header('Cache-Control: public, max-age=31536000');
-        readfile($mediaFile);
+        if (($_GET['k'] ?? '') !== 'pfdiag-serve') {
+            readfile($mediaFile);
+        }
 
         return;
     }
