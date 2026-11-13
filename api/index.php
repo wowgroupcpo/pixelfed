@@ -87,6 +87,19 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         // Pull the most recent log lines so the probe reports the real
         // exception even though the response is a generic 500 page.
         try {
+            $ctl = $app->make(\App\Http\Controllers\Api\ApiV1Controller::class);
+            $rq = Illuminate\Http\Request::create('/api/v1/instance', 'GET');
+            $rq->headers->set('Accept', 'application/json');
+            $res = $ctl->instance($rq);
+            echo "direct instance ok status=", $res->getStatusCode(), "\n";
+        } catch (Throwable $e) {
+            echo "direct instance EXC ", $e::class, ': ', $e->getMessage(), "\n";
+            echo "  at ", $e->getFile(), ':', $e->getLine(), "\n";
+            foreach (array_slice($e->getTrace(), 0, 6) as $i => $f) {
+                echo "  #$i ", ($f['class'] ?? ''), ($f['type'] ?? ''), ($f['function'] ?? ''), ' ', (isset($f['file']) ? $f['file'].':'.$f['line'] : ''), "\n";
+            }
+        }
+        try {
             $r = new ReflectionMethod(\App\Services\AccountService::class, 'getMastodon');
             echo "getMastodon ok\n";
             var_dump(\App\Services\AccountService::getMastodon(1, true));
