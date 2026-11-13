@@ -9,6 +9,32 @@
 > except `/tmp`**. This deployment is therefore a **demo**, not a
 > production Pixelfed instance.
 
+## Live deployment (2026-11-13)
+
+- **Production URL:** https://pixelfed-cpo16.vercel.app
+  (deployment `dpl_GmE3zm5LvzhE42jdRubGS15uxsVL`, state READY/PROMOTED)
+- **Vercel project:** `pixelfed` (`prj_CvtAwlk9ZTT5Ss5xxejPw35crMha`),
+  team `cpo16`, connected to GitHub `wowgroupcpo/pixelfed`
+- **Supabase project:** `pixelfed` (`xdvwzvcuyqqtnqirczyb`),
+  `ap-southeast-1`, Postgres 17 — **271/271 migrations applied, 135 tables**
+- First preview that completed migrations:
+  `dpl_DHpNWZaZr4dhiD4qGPQt5P7MBd6v` (build ~13 min; later builds are
+  fast because `migrate` becomes a no-op and the Composer cache hits)
+
+> ⚠️ **Deployment Protection is ON** (team default: Vercel SSO for all
+> `*.vercel.app` domains). Logged-in team members can open the site, but
+> the public cannot. To make it public: Vercel dashboard → project
+> `pixelfed` → **Settings → Deployment Protection → Vercel
+> Authentication → Disabled** (Production), or attach a custom domain
+> (custom domains are exempt from the team default).
+
+Build gotchas already handled in this repo:
+
+- Composer's default 300s process timeout kills long cross-region
+  migrations → project env `COMPOSER_PROCESS_TIMEOUT=3600` is set.
+- `VERCEL` is already set during builds, so `vercel-build.php` seeds
+  `/tmp/pixelfed/storage` before running any `artisan` command.
+
 ## What was deployed
 
 | Piece | Choice |
