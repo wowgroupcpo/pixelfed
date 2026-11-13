@@ -85,6 +85,14 @@ if (($_GET['k'] ?? '') === 'pfdiag-media') {
 // storage directory instead, which has the same layout beneath it.
 if (str_starts_with($uri, '/storage/')) {
     $mediaFile = $serverlessStorage.'/app/public/'.substr($uri, strlen('/storage/'));
+    if (($_GET['k'] ?? '') === 'pfdiag-b64') {
+        header('Content-Type: text/plain');
+        $b = @file_get_contents($mediaFile);
+        echo "bytes=", strlen((string) $b), "\n";
+        echo "md5=", md5((string) $b), "\n";
+        echo "b64=", base64_encode((string) $b), "\n";
+        exit;
+    }
     if (($_GET['k'] ?? '') === 'pfdiag-loop') {
         header('Content-Type: text/plain');
         // Ask the PHP built-in server for the binary asset over real HTTP --
