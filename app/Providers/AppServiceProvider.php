@@ -37,6 +37,7 @@ use App\Observers\UserObserver;
 use App\Policies\CustomFilterPolicy;
 use App\Services\AccountService;
 use App\Services\UserOidcService;
+use App\Support\NullRedis;
 use App\Util\Localization\EmptyStrippingFileLoader;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -58,6 +59,34 @@ use Laravel\Pulse\Facades\Pulse;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Point the `redis` binding at a no-op client when this host has no Redis.
+     *
+     * Redis is an optional index here (timelines, story index, follower sets,
+     * rate limiting): every reader has a database fallback, and the test suite
+     * runs with `Redis::spy()` for the same reason. But the services call the
+     * facade directly, so a missing server throws before any fallback is
+     * reached -- on serverless that surfaced as "Connection refused" 500s well
+     * past the point where the request was already valid.
+     *
+     * Opt in with REDIS_UNAVAILABLE_FALLBACK=true. It is off by default so a
+     * misconfigured host keeps failing loudly instead of silently losing its
+     * timeline indexes.
+     */
+    protected function registerUnavailableRedisFallback(): void
+    {
+        if (! filter_var(env('REDIS_UNAVAILABLE_FALLBACK', false), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
+        $null = new NullRedis;
+
+        // The facade resolves the connection, not the manager, for the common
+        // case, so both names have to answer.
+        $this->app->instance('redis', $null);
+        $this->app->instance('redis.connection', $null);
+    }
+
     /**
      * Bootstrap any application services.
      *
@@ -233,6 +262,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        $this->registerUnavailableRedisFallback();
+
         Passport::ignoreRoutes();
         Pulse::ignoreRoutes();
 
