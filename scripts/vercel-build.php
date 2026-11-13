@@ -16,6 +16,25 @@
 
 $root = dirname(__DIR__);
 
+// During the Vercel build the VERCEL env var is already set, so
+// bootstrap/app.php points Laravel storage at /tmp/pixelfed/storage —
+// but nothing has seeded that directory yet (api/index.php only runs
+// at request time). Create it or every artisan command fails with
+// "Please provide a valid cache path" from the Blade compiler.
+if (getenv('VERCEL')) {
+    foreach ([
+        '/tmp/pixelfed/storage/app/public',
+        '/tmp/pixelfed/storage/framework/cache/data',
+        '/tmp/pixelfed/storage/framework/sessions',
+        '/tmp/pixelfed/storage/framework/views',
+        '/tmp/pixelfed/storage/logs',
+    ] as $dir) {
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+    }
+}
+
 function vercel_build_run(string $command, string $label): int
 {
     echo "\n[vercel-build] {$label}\n[vercel-build] \$ {$command}\n";
