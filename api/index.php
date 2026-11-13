@@ -137,8 +137,17 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
                 echo "no log at $log\n";
                 continue;
             }
-            echo "--- $log (tail) ---\n";
-            echo implode("\n", array_slice(file($log, FILE_IGNORE_NEW_LINES) ?: [], -30)), "\n";
+            $all = file($log, FILE_IGNORE_NEW_LINES) ?: [];
+            echo "--- $log (head of last exception) ---\n";
+            $idx = null;
+            foreach ($all as $i => $line) {
+                if (str_contains($line, '.ERROR')) {
+                    $idx = $i;
+                }
+            }
+            if ($idx !== null) {
+                echo implode("\n", array_slice($all, $idx, 8)), "\n";
+            }
         }
     } catch (Throwable $e) {
         echo "boot FAIL ", $e::class, ': ', $e->getMessage(), "\n";
