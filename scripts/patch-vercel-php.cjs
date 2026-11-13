@@ -181,8 +181,22 @@ function patchBuilderIndex(file) {
         'handler config',
         file,
     );
-    fs.writeFileSync(file, content);
-    console.log(`${LOG} patched ${file}`);
+    writePatched(file, content);
+}
+
+function writePatched(file, content) {
+    try {
+        fs.writeFileSync(file, content);
+        console.log(`${LOG} patched ${file}`);
+    } catch (e) {
+        if (e.code === 'EROFS' || e.code === 'EACCES' || e.code === 'EPERM') {
+            // Builders are also mounted read-only (squashfs) in the build
+            // container; only the writable working copy can be patched.
+            console.log(`${LOG} skipping read-only copy ${file} (${e.code})`);
+            return;
+        }
+        throw e;
+    }
 }
 
 function patchHelpers(file) {
@@ -206,8 +220,7 @@ function patchHelpers(file) {
         changed = true;
     }
     if (changed) {
-        fs.writeFileSync(file, content);
-        console.log(`${LOG} patched ${file}`);
+        writePatched(file, content);
     }
 }
 
