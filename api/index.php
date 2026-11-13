@@ -74,13 +74,13 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         require __DIR__.'/../vendor/autoload.php';
         $app = require __DIR__.'/../bootstrap/app.php';
         $k = $app->make(Illuminate\Contracts\Http\Kernel::class);
-        $k->bootstrap();
-        echo "laravel booted\n";
+        echo "laravel container ready\n";
         try {
             $req = Illuminate\Http\Request::create('/api/v1/instance', 'GET');
+            $req->headers->set('Accept', 'application/json');
             $res = $k->handle($req);
             echo "instance status=", $res->getStatusCode(), "\n";
-            echo substr((string) $res->getContent(), 0, 300), "\n";
+            echo substr((string) $res->getContent(), 0, 500), "\n";
         } catch (Throwable $e) {
             echo "handle FAIL ", $e::class, ': ', $e->getMessage(), "\n";
         }
