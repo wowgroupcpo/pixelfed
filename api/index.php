@@ -83,6 +83,23 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         try {
             $req = Illuminate\Http\Request::create('/api/v1/instance', 'GET');
             $req->headers->set('Accept', 'application/json');
+            $app['events']->listen(Illuminate\Routing\Events\RouteMatched::class, function () use ($app) {
+                echo "route matched: ", $app['request']->path(), "\n";
+            });
+            try {
+                \Illuminate\Support\Facades\RateLimiter::attempt('pfprobe', 5, function () {});
+                echo "ratelimiter ok (store=", config('cache.default'), ")\n";
+            } catch (Throwable $e) {
+                echo "ratelimiter FAIL: ", $e->getMessage(), "\n";
+            }
+            try {
+                $sess = $app['session']->driver();
+                $sess->put('pfprobe', 1);
+                $sess->save();
+                echo "session write ok driver=", config('session.driver'), " conn=", var_export(config('session.connection'), true), "\n";
+            } catch (Throwable $e) {
+                echo "session FAIL: ", $e::class, ' ', $e->getMessage(), "\n";
+            }
             $res = $k->handle($req);
             echo "instance status=", $res->getStatusCode(), "\n";
             echo substr((string) $res->getContent(), 0, 500), "\n";
