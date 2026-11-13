@@ -14,6 +14,43 @@
  * (see VERCEL_PHP_DOCROOT in vercel.json).
  */
 
+// TEMP DIAGNOSTICS — remove after debugging the Vercel 500.
+if (($_GET['k'] ?? '') === 'pfdiag-7f3a') {
+    header('Content-Type: text/plain');
+    if (isset($_GET['diag'])) {
+        echo "php=".PHP_VERSION." sapi=".PHP_SAPI."\n";
+        echo 'autoload='.(file_exists(__DIR__.'/../vendor/autoload.php') ? 'yes' : 'no')."\n";
+        foreach (['pdo_pgsql', 'gd', 'redis', 'intl', 'mbstring'] as $ext) {
+            echo "ext_$ext=".(extension_loaded($ext) ? 'yes' : 'no')."\n";
+        }
+        echo 'APP_KEY='.(getenv('APP_KEY') ? 'set' : 'MISSING')."\n";
+        echo 'DB_HOST='.getenv('DB_HOST').' DB_PORT='.getenv('DB_PORT')."\n";
+        echo 'tmp_writable='.(is_writable('/tmp') ? 'yes' : 'no')."\n";
+        $t = microtime(true);
+        try {
+            $pdo = new PDO(
+                'pgsql:host='.getenv('DB_HOST').';port='.getenv('DB_PORT').';dbname='.getenv('DB_DATABASE').';sslmode=require',
+                getenv('DB_USERNAME'),
+                getenv('DB_PASSWORD'),
+                [PDO::ATTR_TIMEOUT => 10]
+            );
+            echo sprintf("db_connect=OK in %.2fs\n", microtime(true) - $t);
+            $pdo = null;
+        } catch (Throwable $e) {
+            echo sprintf("db_connect=FAIL in %.2fs %s: %s\n", microtime(true) - $t, $e::class, $e->getMessage());
+        }
+        exit;
+    }
+    ini_set('display_errors', '1');
+    error_reporting(E_ALL);
+    register_shutdown_function(static function () {
+        $err = error_get_last();
+        if ($err) {
+            echo "\n[shutdown] {$err['type']}: {$err['message']} in {$err['file']}:{$err['line']}\n";
+        }
+    });
+}
+
 $serverlessStorage = '/tmp/pixelfed/storage';
 
 if (! is_dir($serverlessStorage.'/framework/views')) {
