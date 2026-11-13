@@ -85,6 +85,20 @@ if (($_GET['k'] ?? '') === 'pfdiag-media') {
 // storage directory instead, which has the same layout beneath it.
 if (str_starts_with($uri, '/storage/')) {
     $mediaFile = $serverlessStorage.'/app/public/'.substr($uri, strlen('/storage/'));
+    if (($_GET['k'] ?? '') === 'pfdiag-remote') {
+        header('Content-Type: text/plain');
+        $target = 'https://'.($_SERVER['HTTP_HOST'] ?? 'pixelfed-liard.vercel.app').'/storage/avatars/default.png?u=r'.mt_rand();
+        $ctx = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 20], 'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
+        $body = @file_get_contents($target, false, $ctx);
+        echo "target=$target\n";
+        echo "status=", ($http_response_header[0] ?? '(none)'), "\n";
+        echo "bytes=", strlen((string) $body), "\n";
+        echo "md5=", md5((string) $body), "\n";
+        foreach ($http_response_header ?? [] as $h) {
+            if (preg_match('/^(content-type|content-length|x-vercel|server):/i', $h)) { echo "hdr: $h\n"; }
+        }
+        exit;
+    }
     if (($_GET['k'] ?? '') === 'pfdiag-b64') {
         header('Content-Type: text/plain');
         $b = @file_get_contents($mediaFile);
