@@ -14,6 +14,46 @@
  * (see VERCEL_PHP_DOCROOT in vercel.json).
  */
 
+// TEMP DIAGNOSTICS — staged boot timing; remove after debugging.
+if (($_GET['k'] ?? '') === 'pfdiag-7f3a' && isset($_GET['diag'])) {
+    @set_time_limit(120);
+    header('Content-Type: text/plain');
+    $t0 = microtime(true);
+    $stage = static function ($name) use ($t0) {
+        echo sprintf("[%6.2fs] %s\n", microtime(true) - $t0, $name);
+        @ob_flush();
+        @flush();
+    };
+    $stage('plain php ok '.PHP_VERSION);
+    try {
+        $pdo = new PDO(
+            'pgsql:host='.getenv('DB_HOST').';port='.getenv('DB_PORT').';dbname='.getenv('DB_DATABASE').';sslmode=require',
+            getenv('DB_USERNAME'),
+            getenv('DB_PASSWORD'),
+            [PDO::ATTR_TIMEOUT => 10]
+        );
+        $stage('pdo connected');
+        $n = $pdo->query('select count(*) from information_schema.tables')->fetchColumn();
+        $stage("pdo query ok (tables=$n)");
+        $pdo = null;
+    } catch (Throwable $e) {
+        $stage('pdo FAIL '.$e::class.': '.$e->getMessage());
+    }
+    try {
+        require __DIR__.'/../vendor/autoload.php';
+        $stage('autoload required');
+        $app = require __DIR__.'/../bootstrap/app.php';
+        $stage('app created');
+        $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+        $kernel->bootstrap();
+        $stage('kernel bootstrapped');
+    } catch (Throwable $e) {
+        $stage('boot FAIL '.$e::class.': '.$e->getMessage().' @ '.$e->getFile().':'.$e->getLine());
+    }
+    $stage('done');
+    exit;
+}
+
 $serverlessStorage = '/tmp/pixelfed/storage';
 
 if (! is_dir($serverlessStorage.'/framework/views')) {
