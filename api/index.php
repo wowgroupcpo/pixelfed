@@ -75,6 +75,7 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         $app = require __DIR__.'/../bootstrap/app.php';
         $k = $app->make(Illuminate\Contracts\Http\Kernel::class);
         echo "laravel container ready\n";
+        config(['app.debug' => true]);
         try {
             $req = Illuminate\Http\Request::create('/api/v1/instance', 'GET');
             $req->headers->set('Accept', 'application/json');
@@ -83,6 +84,15 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
             echo substr((string) $res->getContent(), 0, 500), "\n";
         } catch (Throwable $e) {
             echo "handle FAIL ", $e::class, ': ', $e->getMessage(), "\n";
+        }
+        // Pull the most recent log lines so the probe reports the real
+        // exception even though the response is a generic 500 page.
+        $log = '/tmp/pixelfed/storage/logs/laravel.log';
+        if (is_file($log)) {
+            $lines = array_slice(file($log, FILE_IGNORE_NEW_LINES) ?: [], -25);
+            echo "--- laravel.log tail ---\n", implode("\n", $lines), "\n";
+        } else {
+            echo "no laravel.log at $log\n";
         }
     } catch (Throwable $e) {
         echo "boot FAIL ", $e::class, ': ', $e->getMessage(), "\n";
