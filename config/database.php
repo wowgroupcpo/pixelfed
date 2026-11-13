@@ -102,6 +102,12 @@ return [
             'schema' => 'public',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // Supabase's transaction-mode pooler may route successive prepared
+            // queries to different PostgreSQL backends. Emulate prepares on the
+            // client so PDO does not reuse backend-local named statements.
+            'options' => extension_loaded('pdo_pgsql') ? [
+                PDO::ATTR_EMULATE_PREPARES => true,
+            ] : [],
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
