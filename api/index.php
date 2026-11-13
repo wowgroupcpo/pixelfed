@@ -73,10 +73,11 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
     try {
         require __DIR__.'/../vendor/autoload.php';
         $app = require __DIR__.'/../bootstrap/app.php';
+        $app['config']->set('logging.default', 'single');
+        $app['config']->set('logging.channels.single.path', '/tmp/pixelfed/storage/logs/laravel.log');
         $k = $app->make(Illuminate\Contracts\Http\Kernel::class);
         echo "laravel container ready\n";
         try {
-            config(['logging.default' => 'single', 'logging.channels.single.path' => '/tmp/pixelfed/storage/logs/laravel.log']);
             $req = Illuminate\Http\Request::create('/api/v1/instance', 'GET');
             $req->headers->set('Accept', 'application/json');
             $res = $k->handle($req);
