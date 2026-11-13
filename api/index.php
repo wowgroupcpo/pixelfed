@@ -86,6 +86,20 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         }
         // Pull the most recent log lines so the probe reports the real
         // exception even though the response is a generic 500 page.
+        try {
+            $r = new ReflectionMethod(\App\Services\AccountService::class, 'getMastodon');
+            echo "getMastodon ok\n";
+            var_dump(\App\Services\AccountService::getMastodon(1, true));
+        } catch (Throwable $e) {
+            echo "getMastodon FAIL ", $e::class, ': ', $e->getMessage(), "\n", $e->getFile(), ':', $e->getLine(), "\n";
+        }
+        try {
+            echo "User::count()=", \App\Models\User::count(), "\n";
+            echo "StatusService::totalLocalStatuses()=", \App\Services\StatusService::totalLocalStatuses(), "\n";
+            echo "Instance::count()=", \App\Models\Instance::count(), "\n";
+        } catch (Throwable $e) {
+            echo "stats FAIL ", $e::class, ': ', $e->getMessage(), "\n", $e->getFile(), ':', $e->getLine(), "\n";
+        }
         echo "cache_driver=", config('cache.default'), " redis_host=", config('database.redis.default.host'), ":", config('database.redis.default.port'), "\n";
         echo "session_driver=", config('session.driver'), " queue=", config('queue.default'), "\n";
         echo "cc_enabled=", var_export(config('instance.enable_cc'), true), "\n";
