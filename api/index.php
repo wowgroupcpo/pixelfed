@@ -85,6 +85,25 @@ if (($_GET['k'] ?? '') === 'pfdiag-media') {
 // storage directory instead, which has the same layout beneath it.
 if (str_starts_with($uri, '/storage/')) {
     $mediaFile = $serverlessStorage.'/app/public/'.substr($uri, strlen('/storage/'));
+    if (($_GET['k'] ?? '') === 'pfdiag-loop') {
+        header('Content-Type: text/plain');
+        // Ask the PHP built-in server for the binary asset over real HTTP --
+        // the exact path the launcher proxies -- and report what came back.
+        $port = $_SERVER['SERVER_PORT'] ?? '3000';
+        $url = 'http://127.0.0.1:'.$port.'/storage/avatars/default.png';
+        $body = @file_get_contents($url);
+        echo "url=$url\n";
+        echo "status_line=", ($http_response_header[0] ?? '(none)'), "\n";
+        echo "bytes=", strlen((string) $body), "\n";
+        echo "md5=", md5((string) $body), "\n";
+        echo "expected=", md5_file(__DIR__.'/../storage/app/public/avatars/default.png'), "\n";
+        $ct = '';
+        foreach ($http_response_header ?? [] as $h) {
+            if (stripos($h, 'content-type:') === 0) { $ct = $h; }
+        }
+        echo "ctype=$ct\n";
+        exit;
+    }
     if (($_GET['k'] ?? '') === 'pfdiag-bin') {
         header('Content-Type: text/plain');
         $raw = is_file($mediaFile) ? @file_get_contents($mediaFile) : '';
