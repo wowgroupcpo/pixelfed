@@ -86,6 +86,20 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         }
         // Pull the most recent log lines so the probe reports the real
         // exception even though the response is a generic 500 page.
+        echo "cache_driver=", config('cache.default'), " redis_host=", config('database.redis.default.host'), ":", config('database.redis.default.port'), "\n";
+        echo "session_driver=", config('session.driver'), " queue=", config('queue.default'), "\n";
+        echo "cc_enabled=", var_export(config('instance.enable_cc'), true), "\n";
+        try {
+            \Illuminate\Support\Facades\Cache::put('pfprobe', 'ok', 60);
+            echo "cache write ok, read=", \Illuminate\Support\Facades\Cache::get('pfprobe'), "\n";
+        } catch (Throwable $e) {
+            echo "cache FAIL ", $e::class, ': ', $e->getMessage(), "\n";
+        }
+        try {
+            echo "config_cache app.name=", var_export(config_cache('app.name'), true), "\n";
+        } catch (Throwable $e) {
+            echo "config_cache FAIL ", $e::class, ': ', $e->getMessage(), "\n";
+        }
         foreach (['/tmp/pixelfed/storage/logs/laravel.log', __DIR__.'/../storage/logs/laravel.log'] as $log) {
             if (! is_file($log)) {
                 echo "no log at $log\n";
