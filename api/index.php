@@ -85,6 +85,19 @@ if (($_GET['k'] ?? '') === 'pfdiag-media') {
 // storage directory instead, which has the same layout beneath it.
 if (str_starts_with($uri, '/storage/')) {
     $mediaFile = $serverlessStorage.'/app/public/'.substr($uri, strlen('/storage/'));
+    if (($_GET['k'] ?? '') === 'pfdiag-bin') {
+        header('Content-Type: text/plain');
+        $raw = is_file($mediaFile) ? @file_get_contents($mediaFile) : '';
+        echo "exists=", var_export(is_file($mediaFile), true), "\n";
+        echo "bytes=", strlen($raw), "\n";
+        echo "first8=", bin2hex(substr($raw, 0, 8)), "\n";
+        echo "md5=", md5($raw), "\n";
+        echo "expected_md5=", md5_file('/home/user/pixelfed/storage/app/public/avatars/default.png'), "\n";
+        echo "ob_level=", ob_get_level(), " zlib=", var_export(ini_get('zlib.output_compression'), true), "\n";
+        echo "sendfile=", var_export(ini_get('output_handler'), true), "\n";
+        echo "headers=", json_encode(headers_list()), "\n";
+        exit;
+    }
     if (is_file($mediaFile)) {
         // No getimagesize/mime_content_type here: those need extensions this
         // demo does not always load, and the media set is small and known.
