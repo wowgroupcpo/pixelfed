@@ -76,6 +76,7 @@ if (($_GET['k'] ?? '') === 'pfdiag-db') {
         $k = $app->make(Illuminate\Contracts\Http\Kernel::class);
         echo "laravel container ready\n";
         try {
+            config(['logging.default' => 'single', 'logging.channels.single.path' => '/tmp/pixelfed/storage/logs/laravel.log']);
             $req = Illuminate\Http\Request::create('/api/v1/instance', 'GET');
             $req->headers->set('Accept', 'application/json');
             $res = $k->handle($req);
