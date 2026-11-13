@@ -54,7 +54,10 @@ if (! is_dir($serverlessStorage.'/framework/views')) {
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
 $staticFile = __DIR__.'/../public'.$uri;
 
-if ($uri !== '/' && is_file($staticFile)) {
+// Never let PHP's built-in server (or Vercel's filesystem layer) serve a
+// .php file as a static download — that leaks Laravel's front controller
+// source instead of executing it. Only real static assets return false.
+if ($uri !== '/' && is_file($staticFile) && ! str_ends_with(strtolower($uri), '.php')) {
     return false;
 }
 
