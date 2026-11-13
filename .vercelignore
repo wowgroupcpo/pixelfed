@@ -1,0 +1,22 @@
+# Uploaded to Vercel only — the vercel-php builder runs its own
+# `composer install --no-dev` and harvests vendor/ itself.
+node_modules
+vendor
+.git
+.ddev
+.github
+tests
+phpstan
+notes
+mysql-9-data
+redis-data
+docker-compose-state
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+public/hot
+.env
+.env.*
+!.env.example
+!.env.vercel.example
