@@ -85,6 +85,40 @@ if (($_GET['k'] ?? '') === 'pfdiag-media') {
 // storage directory instead, which has the same layout beneath it.
 if (str_starts_with($uri, '/storage/')) {
     $mediaFile = $serverlessStorage.'/app/public/'.substr($uri, strlen('/storage/'));
+    if (($_GET['k'] ?? '') === 'pfdiag-spa') {
+        header('Content-Type: text/plain');
+        @set_time_limit(50);
+        try {
+            $app = require __DIR__.'/../bootstrap/app.php';
+            $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+            $req = Illuminate\Http\Request::create('/i/web', 'GET');
+            $app->instance('request', $req);
+            $kernel->bootstrap();
+
+            echo "redis binding=", get_class($app->make('redis')), "\n";
+            echo "storyIndex ok=";
+            try { var_export(app(App\Services\StoryIndexService::class)->hasActiveStory(1)); } catch (Throwable $e) { echo 'FAIL '.$e->getMessage(); }
+            echo "\n";
+
+            $user = App\Models\User::first();
+            if (! $user) { echo "no users yet\n"; exit; }
+            echo "user={$user->username} pid={$user->profile_id}\n";
+
+            $req->setUserResolver(fn () => $user);
+            $app['auth']->setUser($user);
+
+            try {
+                $html = view('layouts.spa')->render();
+                echo "spa render OK bytes=", strlen($html), "\n";
+            } catch (Throwable $e) {
+                echo "spa render FAIL ", $e::class, ': ', $e->getMessage(), "\n";
+                echo "at ", $e->getFile(), ':', $e->getLine(), "\n";
+            }
+        } catch (Throwable $e) {
+            echo "boot FAIL ", $e::class, ': ', $e->getMessage(), "\n";
+        }
+        exit;
+    }
     if (($_GET['k'] ?? '') === 'pfdiag-remote') {
         header('Content-Type: text/plain');
         $target = 'https://'.($_SERVER['HTTP_HOST'] ?? 'pixelfed-liard.vercel.app').'/storage/avatars/default.png?u=r'.mt_rand();
