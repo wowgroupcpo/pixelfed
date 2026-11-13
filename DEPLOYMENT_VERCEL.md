@@ -28,6 +28,13 @@
 > Authentication → Disabled** (Production), or attach a custom domain
 > (custom domains are exempt from the team default).
 
+Fixed bug (2026-11-13): opening `/` **downloaded `public/index.php`
+source** instead of rendering the site. Cause: the `filesystem` route
+handler ran first, so Vercel served `public/index.php` as a static
+file. Fix: `vercel.json` now routes `/` and `/index.php` to the PHP
+function *before* the filesystem handler, and `api/index.php` never
+returns `false` (static passthrough) for `.php` files.
+
 Build gotchas already handled in this repo:
 
 - Composer's default 300s process timeout kills long cross-region
